@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TestDriller — WAEC/NECO Quiz</title>
+<style>
+  :root {
+    --bg:       #1e1e20;
+    --surface:  #27272a;
+    --surface2: #2f2f33;
+    --border:   #3d3d42;
+    --divider:  #38383c;
+    --accent:   #3b6fd4;
+    --orange:   #d97706;
+    --green:    #16a34a;
+    --red:      #dc2626;
+    --text:     #e4e4e7;
+    --sub:      #a1a1aa;
+    --muted:    #71717a;
+    --radius:   6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { zoom: 0.85; }
+
+  body {
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  #app { max-width: 720px; margin: 0 auto; padding: 32px 18px 100px; }
+
+  /* ─── Header ─── */
+  header { text-align: center; padding: 40px 0 32px; }
+  .app-label {
+    font-size: 11px; font-weight: 600; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 14px;
+  }
+  h1 { font-size: 28px; font-weight: 700; color: var(--text); letter-spacing: -.01em; }
+  h1 .brand-accent { color: var(--accent); }
+  header p { color: var(--sub); margin-top: 8px; font-size: 14px; }
+
+  /* ─── Card ─── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 14px;
+  }
+
+  .section-title {
+    font-size: 11px; font-weight: 600; letter-spacing: .10em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
+  }
+
+  /* ─── Tabs ─── */
+  .tabs {
+    display: flex; gap: 0;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    overflow: hidden; margin-bottom: 18px;
+  }
+  .tab {
+    flex: 1; padding: 10px 14px; border: none;
+    font-family: inherit; font-size: 13px; font-weight: 500;
+    cursor: pointer; background: transparent; color: var(--sub);
+    border-right: 1px solid var(--border); transition: background .15s, color .15s;
+  }
+  .tab:last-child { border-right: none; }
+  .tab.active { background: var(--accent); color: #fff; }
+
+  /* ─── Selects ─── */
+  .selects { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media(max-width:520px) { .selects { grid-template-columns: 1fr; } }
+
+  select {
+    width: 100%; padding: 10px 12px;
+    background: var(--surface2); color: var(--text);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    font-family: inherit; font-size: 14px; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2371717a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center;
+    cursor: pointer;
+  }
+  select:focus { outline: none; border-color: var(--accent); }
+
+  /* ─── Slider row ─── */
+  .slider-row { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+  .slider-row label { font-size: 13px; color: var(--sub); white-space: nowrap; }
+  input[type=range] { flex: 1; accent-color: var(--accent); cursor: pointer; }
+  #count-display { font-weight: 700; font-size: 16px; color: var(--text); min-width: 36px; text-align: right; }
+
+  /* ─── Start button ─── */
+  #start-btn {
+    width: 100%; padding: 13px;
+    background: var(--accent); color: #fff;
+    border: none; border-radius: var(--radius);
+    font-family: inherit; font-size: 15px; font-weight: 600;
+    cursor: pointer; margin-top: 16px; transition: opacity .15s;
+  }
+  #start-btn:hover { opacity: .88; }
+  #start-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* ─── Loading ─── */
+  #loading { text-align: center; padding: 60px 20px; display: none; }
+  .spinner {
+    width: 36px; height: 36px; border: 2px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 1s linear infinite; margin: 0 auto 12px;
+  }
+  #loading p { color: var(--sub); font-size: 14px; }
+
+  /* ─────────────────────────────────────
+     QUIZ SCREEN
+  ───────────────────────────────────── */
+  #quiz-screen { display: none; }
+
+  /* Toolbar */
+  .quiz-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0 14px;
+    border-bottom: 1px solid var(--divider);
+    margin-bottom: 16px;
+  }
+  .toolbar-icons { display: flex; gap: 6px; }
+  .icon-btn {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--sub); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: color .15s, border-color .15s;
+  }
+  .icon-btn:hover { color: var(--text); border-color: var(--sub); }
+
+  /* Timer */
+  .timer-badge {
+    background: var(--orange); color: #fff;
+    padding: 6px 14px; border-radius: 4px;
+    font-size: 13px; font-weight: 600;
+    font-variant-numeric: tabular-nums; letter-spacing: .04em;
+  }
+
+  /* Subject label */
+  .subject-tab {
+    display: inline-block;
+    color: var(--accent); font-size: 13px; font-weight: 600;
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 3px; margin-bottom: 14px;
+    letter-spacing: .02em;
+  }
+
+  /* Question counter row */
+  .q-counter-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .q-counter-pill {
+    flex: 1; display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 8px 14px;
+    font-size: 13px; font-weight: 600; color: var(--sub);
+  }
+  .speaker-icon { color: var(--muted); display: flex; align-items: center; }
+  .next-circle-btn {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--accent); border: none; color: #fff;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: opacity .15s;
+  }
+  .next-circle-btn:hover { opacity: .85; }
+
+  /* Progress */
+  .progress-wrap { height: 2px; background: var(--border); margin-bottom: 20px; }
+  .progress-bar { height: 100%; background: var(--accent); transition: width .3s; }
+
+  /* Question */
+  .question-card { padding-bottom: 24px; }
+  .q-text { font-size: 15px; line-height: 1.7; margin-bottom: 6px; color: var(--text); }
+  .q-year-tag {
+    display: inline-block; font-size: 11px; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 3px;
+    padding: 2px 7px; margin-bottom: 18px; letter-spacing: .04em;
+  }
+  .q-image { max-width: 100%; border-radius: 4px; margin-bottom: 14px; display: block; }
+
+  /* Options */
+  .options { display: flex; flex-direction: column; }
+  .option {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 13px 6px;
+    border-bottom: 1px solid var(--divider);
+    background: transparent; cursor: pointer; transition: background .1s;
+  }
+  .option:first-child { border-top: 1px solid var(--divider); }
+  .option:hover:not(.disabled) { background: rgba(255,255,255,.03); }
+  .option.selected { background: rgba(59,111,212,.07); }
+  .option.correct  { background: rgba(22,163,74,.07); }
+  .option.wrong    { background: rgba(220,38,38,.07); }
+  .option.disabled { cursor: default; }
+
+  .opt-letter {
+    font-size: 14px; font-weight: 700; color: var(--sub);
+    min-width: 18px; flex-shrink: 0; padding-top: 1px;
+  }
+  .option.correct .opt-letter { color: var(--green); }
+  .option.wrong   .opt-letter { color: var(--red); }
+
+  .opt-radio {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid var(--border); background: transparent;
+    flex-shrink: 0; margin-top: 3px;
+    display: flex; align-items: center; justify-content: center; transition: all .15s;
+  }
+  .option.selected:not(.correct):not(.wrong) .opt-radio { border-color: var(--accent); background: var(--accent); }
+  .option.correct .opt-radio { border-color: var(--green); background: var(--green); }
+  .option.wrong   .opt-radio { border-color: var(--red);   background: var(--red); }
+  .opt-radio-dot { width: 6px; height: 6px; border-radius: 50%; background: #fff; display: none; }
+  .option.selected .opt-radio-dot,
+  .option.correct  .opt-radio-dot,
+  .option.wrong    .opt-radio-dot { display: block; }
+
+  .opt-text { flex: 1; font-size: 14px; line-height: 1.55; color: var(--text); }
+  .option.correct .opt-text { color: var(--green); }
+  .option.wrong   .opt-text { color: var(--red); }
+
+  /* Theory box */
+  .theory-box {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px; margin-top: 14px;
+  }
+  .theory-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .08em; }
+  .theory-answer { font-size: 14px; line-height: 1.7; color: var(--text); }
+
+  /* Explanation */
+  .explanation {
+    margin-top: 14px; padding: 12px 14px;
+    border-left: 3px solid var(--green);
+    background: rgba(22,163,74,.05);
+    font-size: 13px; line-height: 1.65; color: var(--sub); display: none;
+  }
+  .explanation.show { display: block; }
+  .explanation-label { font-weight: 600; margin-bottom: 4px; color: var(--green); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+
+  /* Nav buttons */
+  .nav-buttons { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
+  .btn {
+    padding: 10px 20px; border-radius: var(--radius);
+    font-family: inherit; font-size: 13px; font-weight: 500;
+    cursor: pointer; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--sub);
+    transition: border-color .15s, color .15s;
+  }
+  .btn:hover { border-color: var(--sub); color: var(--text); }
+  #show-ans-btn { color: var(--green); border-color: rgba(22,163,74,.4); }
+  #show-ans-btn:hover { background: rgba(22,163,74,.07); }
+
+  /* Bottom bar */
+  .quiz-bottom-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 20px 16px;
+    background: var(--bg); border-top: 1px solid var(--divider); z-index: 100;
+  }
+  .answered-pill {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 7px 13px;
+    font-size: 13px; font-weight: 600; color: var(--sub);
+  }
+  .answered-pill svg { color: var(--muted); }
+  .submit-btn {
+    padding: 10px 24px;
+    background: var(--orange); color: #fff;
+    border: none; border-radius: var(--radius);
+    font-family: inherit; font-size: 14px; font-weight: 600;
+    cursor: pointer; display: flex; align-items: center; gap: 7px;
+    transition: opacity .15s;
+  }
+  .submit-btn:hover { opacity: .88; }
+
+  /* ─────────────────────────────────────
+     RESULTS SCREEN
+  ───────────────────────────────────── */
+  #results-screen { display: none; }
+
+  .score-hero {
+    text-align: center; padding: 36px 20px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 14px;
+  }
+  .score-ring { width: 130px; height: 130px; margin: 0 auto 18px; position: relative; }
+  .score-ring svg { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--border); stroke-width: 7; }
+  .ring-fg { fill: none; stroke-width: 7; stroke-linecap: butt; transition: stroke-dashoffset 1s ease; }
+  .score-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; }
+  .score-pct { font-weight: 700; font-size: 28px; color: var(--text); }
+  .score-pct-sub { font-size: 11px; color: var(--muted); letter-spacing: .06em; }
+  .score-title { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
+  .score-sub { color: var(--sub); font-size: 13px; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 14px; }
+  @media(max-width:480px) { .stats-grid { grid-template-columns: 1fr 1fr; } }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px; text-align: center;
+  }
+  .stat-val { font-size: 22px; font-weight: 700; }
+  .stat-lbl { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .stat-correct .stat-val { color: var(--green); }
+  .stat-wrong   .stat-val { color: var(--red); }
+  .stat-skip    .stat-val { color: var(--muted); }
+
+  .review-title { font-size: 11px; font-weight: 600; margin-bottom: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .10em; }
+  .review-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px; margin-bottom: 8px;
+  }
+  .review-item.r-correct { border-left: 3px solid var(--green); }
+  .review-item.r-wrong   { border-left: 3px solid var(--red); }
+  .review-item.r-skip    { border-left: 3px solid var(--muted); }
+  .review-status { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 5px; }
+  .r-correct .review-status { color: var(--green); }
+  .r-wrong   .review-status { color: var(--red); }
+  .r-skip    .review-status { color: var(--muted); }
+  .review-q { font-size: 14px; line-height: 1.55; margin-bottom: 5px; }
+  .review-answers { font-size: 13px; color: var(--sub); }
+  .review-answers span { color: var(--text); }
+  .review-exp { font-size: 12px; color: var(--sub); margin-top: 7px; line-height: 1.6; border-left: 2px solid var(--divider); padding-left: 8px; }
+
+  .restart-btn {
+    width: 100%; padding: 13px;
+    background: var(--accent); color: #fff; border: none; border-radius: var(--radius);
+    font-family: inherit; font-size: 15px; font-weight: 600;
+    cursor: pointer; margin-top: 8px; transition: opacity .15s;
+  }
+  .restart-btn:hover { opacity: .88; }
+
+  /* ─── Utilities ─── */
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-box {
+    background: rgba(220,38,38,.07); border: 1px solid rgba(220,38,38,.3);
+    border-radius: var(--radius); padding: 10px 13px; color: var(--red);
+    font-size: 13px; margin-top: 10px; display: none;
+  }
+</style>
+<!-- KaTeX for math rendering -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+  onload="window.__katexReady = true;"></script>
+<style>
+  /* KaTeX display tweaks */
+  .katex { font-size: 1em !important; }
+  .katex-display { margin: 0.3em 0 !important; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── SETUP SCREEN ── -->
+  <div id="setup-screen">
+    <header>
+      <div class="app-label">WAEC &amp; NECO Practice</div>
+      <h1>Test<span class="brand-accent">Driller</span></h1>
+      <p>Practice with real past questions — no questions left behind</p>
+    </header>
+
+    <div class="card">
+      <div class="section-title">Quiz Type</div>
+      <div class="tabs">
+        <button class="tab active" onclick="setType('obj')">Objective</button>
+        <button class="tab" onclick="setType('theory')">Theory / Practical</button>
+      </div>
+
+      <div class="section-title">Select Subject &amp; Year</div>
+      <div class="selects">
+        <select id="subject-select">
+          <option value="">Loading subjects…</option>
+        </select>
+        <select id="year-select">
+          <option value="">All Years</option>
+        </select>
+      </div>
+
+      <div class="slider-row" id="count-row">
+        <label>Questions</label>
+        <select id="count-slider" style="flex:1;">
+          <option value="10">10</option>
+          <option value="20">20</option>
+          <option value="30">30</option>
+          <option value="40" selected>40</option>
+          <option value="50">50</option>
+        </select>
+      </div>
+
+      <div class="error-box" id="error-box"></div>
+      <button id="start-btn" onclick="startQuiz()">Start Quiz →</button>
+    </div>
+  </div>
+
+  <!-- ── LOADING ── -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <p>Loading questions…</p>
+  </div>
+
+  <!-- ── QUIZ SCREEN ── -->
+  <div id="quiz-screen">
+    <!-- Toolbar -->
+    <div class="quiz-toolbar">
+      <div class="toolbar-icons">
+        <button class="icon-btn" onclick="prevQuestion()" title="Previous">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button class="icon-btn" title="Bookmark">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        </button>
+        <button class="icon-btn" title="AI Help">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="11" width="20" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/></svg>
+        </button>
+        <button class="icon-btn" title="Report Issue">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r="0.5" fill="currentColor"/></svg>
+        </button>
+        <button class="icon-btn" title="Calculator">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="7" x2="16" y2="7"/><rect x="8" y="11" width="2" height="2" rx="0.5" fill="currentColor" stroke="none"/><rect x="11" y="11" width="2" height="2" rx="0.5" fill="currentColor" stroke="none"/><rect x="14" y="11" width="2" height="2" rx="0.5" fill="currentColor" stroke="none"/><rect x="8" y="14" width="2" height="2" rx="0.5" fill="currentColor" stroke="none"/><rect x="11" y="14" width="2" height="2" rx="0.5" fill="currentColor" stroke="none"/><rect x="14" y="14" width="5" height="2" rx="0.5" fill="currentColor" stroke="none"/></svg>
+        </button>
+      </div>
+      <div class="timer-badge" id="timer-display">01:00:00</div>
+    </div>
+
+    <!-- Subject tab -->
+    <div class="subject-tab" id="q-subject">Subject</div>
+
+    <!-- Question counter row -->
+    <div class="q-counter-row">
+      <div class="q-counter-pill">
+        <span>Question <span id="q-current">1</span>/<span id="q-total">50</span></span>
+        <span class="speaker-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+        </span>
+      </div>
+      <button class="next-circle-btn" onclick="nextQuestion()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+
+    <div class="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+
+    <div class="question-card">
+      <div class="q-text" id="q-text"></div>
+      <div class="q-year-tag" id="q-year-tag"></div>
+      <img id="q-image" class="q-image" style="display:none" alt="Question image"/>
+      <div class="options" id="options-container"></div>
+
+      <div class="theory-box" id="theory-box" style="display:none">
+        <div class="theory-label">Marking Scheme / Answer</div>
+        <div class="theory-answer" id="theory-answer"></div>
+      </div>
+
+      <div class="explanation" id="explanation">
+        <div class="explanation-label">Explanation</div>
+        <div id="explanation-text"></div>
+      </div>
+    </div>
+
+    <div class="nav-buttons">
+      <button class="btn" id="show-ans-btn" onclick="showAnswer()">Show Answer</button>
+      <button class="btn btn-ghost" onclick="endQuiz()" style="margin-left:auto">Finish</button>
+    </div>
+
+    <!-- Fixed bottom bar -->
+    <div class="quiz-bottom-bar">
+      <div class="answered-pill">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+        <span id="q-answered">0</span>/<span id="q-total2">0</span>
+      </div>
+      <button class="submit-btn" onclick="endQuiz()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Submit
+      </button>
+    </div>
+  </div>
+
+  <!-- ── RESULTS SCREEN ── -->
+  <div id="results-screen">
+    <div class="score-hero">
+      <div class="score-ring">
+        <svg width="140" height="140" viewBox="0 0 140 140">
+          <circle class="ring-bg" cx="70" cy="70" r="58"/>
+          <circle class="ring-fg" id="ring-fg" cx="70" cy="70" r="58"
+            stroke-dasharray="364.4" stroke-dashoffset="364.4"/>
+        </svg>
+        <div class="score-label">
+          <div class="score-pct" id="score-pct">0%</div>
+          <div class="score-pct-sub">score</div>
+        </div>
+      </div>
+      <div class="score-title" id="score-title"></div>
+      <div class="score-sub" id="score-sub"></div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card stat-correct"><div class="stat-val" id="stat-correct">0</div><div class="stat-lbl">Correct</div></div>
+      <div class="stat-card stat-wrong"><div class="stat-val" id="stat-wrong">0</div><div class="stat-lbl">Wrong</div></div>
+      <div class="stat-card stat-skip"><div class="stat-val" id="stat-skip">0</div><div class="stat-lbl">Skipped</div></div>
+    </div>
+
+    <div class="review-title">Question Review</div>
+    <div id="review-list"></div>
+
+    <button class="restart-btn" onclick="restart()">Back to Setup</button>
+  </div>
+
+</div>
+
+<script>
+// ── KaTeX helpers ──────────────────────────────────────────────────────
+
+/**
+ * Decode HTML entities in the source data to plain Unicode characters.
+ * Must run BEFORE re-escaping for HTML output.
+ */
+function decodeHTMLEntities(str) {
+  const map = {
+    '&radic;':'√','&nbsp;':' ','&times;':'×','&divide;':'÷',
+    '&pi;':'π','&le;':'≤','&ge;':'≥','&ne;':'≠','&asymp;':'≈',
+    '&prop;':'∝','&equiv;':'≡','&plusmn;':'±','&deg;':'°',
+    '&alpha;':'α','&beta;':'β','&theta;':'θ','&phi;':'φ',
+    '&sigma;':'σ','&delta;':'δ','&gamma;':'γ','&lambda;':'λ',
+    '&mu;':'μ','&omega;':'ω','&infin;':'∞','&sum;':'∑',
+    '&int;':'∫','&cup;':'∪','&cap;':'∩','&isin;':'∈',
+    '&notin;':'∉','&sub;':'⊂','&sup;':'⊃',
+    '&frac12;':'½','&frac14;':'¼','&frac34;':'¾',
+    '&lt;':'<','&gt;':'>','&quot;':'"','&apos;':"'",
+  };
+  let s = str;
+  for (const [entity, char] of Object.entries(map)) s = s.split(entity).join(char);
+  // numeric entities  &#N;  and  &#xHH;
+  s = s.replace(/&#(\d+);/g,      (_, c) => String.fromCharCode(+c));
+  s = s.replace(/&#x([0-9a-f]+);/gi,(_, c) => String.fromCharCode(parseInt(c,16)));
+  // &amp; last so it doesn't interfere with other entities above
+  s = s.split('&amp;').join('&');
+  return s;
+}
+
+// Base-word → digit map for number-base notation
+const BASE_WORDS = {
+  two:2, three:3, four:4, five:5, six:6,
+  seven:7, eight:8, nine:9, ten:10, sixteen:16
+};
+const BASE_WORD_RE = Object.keys(BASE_WORDS).join('|');  // "two|three|..."
+
+/**
+ * Convert plain-text / HTML-entity math patterns in WAEC data into
+ * LaTeX $…$ delimiters so KaTeX can render them.
+ */
+function mathify(raw) {
+  if (!raw) return '';
+
+  // 1 – Decode any HTML entities the data contains (e.g. &radic; → √)
+  let s = decodeHTMLEntities(raw);
+
+  // 2 – Re-escape only < and > for safe innerHTML; leave & as-is
+  //     (we're emitting new HTML, so math chars like × stay as Unicode)
+  s = s.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // 3 – Surds:  3√45 → $3\sqrt{45}$  |  √5 → $\sqrt{5}$
+  s = s.replace(/(\d+)√(\d+)/g, (_, c, r) => `$${c}\\sqrt{${r}}$`);
+  s = s.replace(/√(\d+)/g,      (_, r)     => `$\\sqrt{${r}}$`);
+
+  // 4 – Base-word in parens with optional exponent:
+  //     (111two)2 → $(111)_{2}^{2}$  |  (1012two) → $(1012)_{2}$
+  const bwRe = new RegExp(`\\((\\d+)(${BASE_WORD_RE})\\)(\\d)?`, 'gi');
+  s = s.replace(bwRe, (_, digits, word, exp) => {
+    const base = BASE_WORDS[word.toLowerCase()];
+    return exp ? `$(${digits})_{${base}}^{${exp}}$`
+               : `$(${digits})_{${base}}$`;
+  });
+
+  // 5 – Bare base-word suffix:  111001two → $111001_{2}$
+  const bwBare = new RegExp(`\\b(\\d+)(${BASE_WORD_RE})\\b`, 'gi');
+  s = s.replace(bwBare, (_, digits, word) =>
+    `$${digits}_{${BASE_WORDS[word.toLowerCase()]}}$`);
+
+  // 6 – Mixed numbers "W N/D" → $W\tfrac{N}{D}$  e.g. 5 1/4
+  s = s.replace(/\b(\d{1,3}) (\d{1,2})\/(\d{1,2})\b/g,
+    (_, w, n, d) => `$${w}\\tfrac{${n}}{${d}}$`);
+
+  // 7 – Isolated fractions surrounded by operators/spaces/brackets
+  s = s.replace(/(^|[\s(+\-×÷=,])(\d{1,3})\/(\d{1,3})([\s)+\-×÷=,.]|$)/g,
+    (_, pre, n, d, post) => `${pre}$\\tfrac{${n}}{${d}}$${post}`);
+
+  // 8 – Log bases:  log2x → $\log_{2} x$
+  s = s.replace(/\blog(\d{1,2})([a-zA-Z])/g,
+    (_, base, arg) => `$\\log_{${base}} ${arg}$`);
+
+  // 9 – Numeric base subscript:  (1012)2 → $(1012)_{2}$
+  s = s.replace(/\((\d+)\)(\d)\b/g,
+    (_, digits, base) => `$(${digits})_{${base}}$`);
+
+  // 10 – Collapse operator tokens between adjacent $ blocks
+  s = s.replace(/\$\s*([+\-×÷])\s*\$/g, '$1');
+
+  return s;
+}
+
+/**
+ * Run KaTeX auto-render on a DOM element if KaTeX is loaded.
+ */
+function renderKatex(el) {
+  if (!el) return;
+  if (typeof renderMathInElement !== 'undefined') {
+    renderMathInElement(el, {
+      delimiters: [
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false,
+      errorColor: '#dc2626'
+    });
+  } else {
+    // KaTeX not yet loaded – retry once it fires
+    window.addEventListener('load', () => renderKatex(el), { once: true });
+  }
+}
+
+// ── State ──────────────────────────────────────────────────────────────
+let allData       = {};
+let quizType      = 'obj';    // 'obj' | 'theory'
+let questions     = [];
+let currentIdx    = 0;
+let userAnswers   = {};       // idx → { selected, correct }
+let theoryShown   = {};       // idx → true
+let timerInterval = null;
+let timerSeconds  = 3600;
+
+// ── Boot ───────────────────────────────────────────────────────────────
+window.onload = () => {
+  loadSubjects('obj');
+};
+
+function loadSubjects(type) {
+  const file = type === 'obj' ? 'obj/subjects.js' : 'theory/subjects.js';
+  injectScript(file, () => {
+    allData[type] = { __subjects__: window.__SUBJECTS__ };
+    if (type === quizType) populateSubjects();
+  });
+}
+
+function loadSubjectData(type, subjectFile, callback) {
+  const base = type === 'obj' ? 'obj/' : 'theory/';
+  window.__QUIZ_SUBJECT__ = null;
+  injectScript(base + subjectFile, () => {
+    callback(window.__QUIZ_SUBJECT__);
+  });
+}
+
+function injectScript(src, callback) {
+  // Remove previous dynamic script if any
+  const old = document.getElementById('__dyn_script__');
+  if (old) old.remove();
+  const s = document.createElement('script');
+  s.id = '__dyn_script__';
+  s.src = src + '?t=' + Date.now();
+  s.onload = callback;
+  s.onerror = () => showError(`Could not load: ${src}`);
+  document.head.appendChild(s);
+}
+
+// ── Type toggle ─────────────────────────────────────────────────────────
+function setType(type) {
+  quizType = type;
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (i===0 && type==='obj') || (i===1 && type==='theory')));
+  document.getElementById('count-row').style.display = type === 'obj' ? 'flex' : 'none';
+  hideError();
+
+  if (allData[type]) {
+    populateSubjects();
+  } else {
+    document.getElementById('subject-select').innerHTML = '<option>Loading…</option>';
+    loadSubjects(type);
+  }
+}
+
+// ── Populate dropdowns ─────────────────────────────────────────────────
+function populateSubjects() {
+  const subjects = allData[quizType].__subjects__;
+  const sel = document.getElementById('subject-select');
+  sel.innerHTML = '<option value="">— Select Subject —</option>' +
+    subjects.map(s => `<option value="${s.file}">${s.name}</option>`).join('');
+  sel.onchange = () => {
+    const file = sel.value;
+    const yearSel = document.getElementById('year-select');
+    if (!file) { yearSel.innerHTML = '<option value="">All Years</option>'; return; }
+    yearSel.innerHTML = '<option value="">Loading years...</option>';
+    loadSubjectData(quizType, file, (pool) => {
+      if (!pool) { yearSel.innerHTML = '<option value="">All Years</option>'; return; }
+      const years = [...new Set(pool.map(q => q.year))].sort();
+      yearSel.innerHTML = '<option value="">All Years</option>' +
+        years.map(y => '<option value="' + y + '">' + y + '</option>').join('');
+    });
+  };
+}
+
+
+
+// ── Start quiz ─────────────────────────────────────────────────────────
+function startQuiz() {
+  hideError();
+  const subjectFile = document.getElementById('subject-select').value;
+  if (!subjectFile) { showError('Please select a subject.'); return; }
+
+  const year = document.getElementById('year-select').value;
+  document.getElementById('start-btn').disabled = true;
+  document.getElementById('start-btn').textContent = 'Loading…';
+
+  loadSubjectData(quizType, subjectFile, (pool) => {
+    document.getElementById('start-btn').disabled = false;
+    document.getElementById('start-btn').textContent = 'Start Quiz';
+
+    if (!pool || pool.length === 0) { showError('No questions found.'); return; }
+
+    // Filter by year
+    let filtered = year ? pool.filter(q => q.year === year) : pool;
+
+    // Populate years dropdown after loading
+    const yearSel = document.getElementById('year-select');
+    const years = [...new Set(pool.map(q => q.year))].sort();
+    const currentYear = yearSel.value;
+    yearSel.innerHTML = '<option value="">All Years</option>' +
+      years.map(y => `<option value="${y}" ${y===currentYear?'selected':''}>${y}</option>`).join('');
+
+    if (filtered.length === 0) { showError('No questions for that year.'); return; }
+
+    // Shuffle
+    filtered = filtered.slice().sort(() => Math.random() - .5);
+
+    if (quizType === 'obj') {
+      filtered = filtered.filter(q => q.options && (q.options.A || q.options.B));
+      const count = parseInt(document.getElementById('count-slider').value);
+      questions = filtered.slice(0, Math.min(count, filtered.length));
+    } else {
+      questions = filtered;
+    }
+
+    if (questions.length === 0) { showError('No valid questions found.'); return; }
+
+    currentIdx  = 0;
+    userAnswers = {};
+    theoryShown = {};
+
+    hide('setup-screen');
+    show('quiz-screen');
+    startTimer();
+    updateAnsweredCount();
+    renderQuestion();
+  });
+}
+
+// ── Render question ────────────────────────────────────────────────────
+function renderQuestion() {
+  const q   = questions[currentIdx];
+  const idx = currentIdx;
+  const total = questions.length;
+
+  document.getElementById('q-subject').textContent   = q.subject;
+  document.getElementById('q-current').textContent   = idx + 1;
+  document.getElementById('q-total').textContent     = total;
+  document.getElementById('q-year-tag').textContent  = `${q.subject} ${q.year}`;
+
+  const qTextEl = document.getElementById('q-text');
+  qTextEl.innerHTML = mathify(q.question);
+  renderKatex(qTextEl);
+  document.getElementById('progress-bar').style.width = ((idx + 1) / total * 100) + '%';
+  updateAnsweredCount();
+
+  // Image
+  const imgEl = document.getElementById('q-image');
+  const imgPath = q.images && q.images.length > 0 ? q.images[0] : null;
+  if (imgPath) {
+    imgEl.src = (quizType === 'obj' ? 'obj/' : 'theory/') + imgPath;
+    imgEl.style.display = 'block';
+    imgEl.onerror = () => { imgEl.style.display = 'none'; };
+  } else {
+    imgEl.style.display = 'none';
+  }
+
+  // Explanation
+  const expEl = document.getElementById('explanation');
+  expEl.classList.remove('show');
+  document.getElementById('explanation-text').textContent = '';
+
+  // Theory vs Objective
+  if (quizType === 'theory') {
+    document.getElementById('options-container').innerHTML = '';
+    document.getElementById('options-container').style.display = 'none';
+    document.getElementById('show-ans-btn').style.display = 'inline-block';
+    document.getElementById('theory-box').style.display   = theoryShown[idx] ? 'block' : 'none';
+    const theoryAnsEl = document.getElementById('theory-answer');
+    theoryAnsEl.innerHTML = mathify(q.marking_scheme || q.explanation || 'No answer provided.');
+    renderKatex(theoryAnsEl);
+  } else {
+    document.getElementById('options-container').style.display = 'flex';
+    document.getElementById('theory-box').style.display = 'none';
+    document.getElementById('show-ans-btn').style.display = 'none';
+    renderOptions(q, idx);
+  }
+}
+
+function renderOptions(q, idx) {
+  const container = document.getElementById('options-container');
+  const answered  = userAnswers[idx];
+  const letters   = ['A','B','C','D'];
+
+  container.innerHTML = letters
+    .filter(l => q.options[l])
+    .map(letter => {
+      let cls = 'option';
+      if (answered) {
+        cls += ' disabled';
+        if (letter === q.answer) cls += ' correct';
+        else if (letter === answered.selected) cls += ' wrong';
+      }
+      return `<div class="${cls}" onclick="selectAnswer('${letter}')">
+        <div class="opt-letter">${letter}</div>
+        <div class="opt-radio"><div class="opt-radio-dot"></div></div>
+        <div class="opt-text">${mathify(q.options[letter])}</div>
+      </div>`;
+    }).join('');
+
+  // Render KaTeX in all newly-created option texts
+  container.querySelectorAll('.opt-text').forEach(renderKatex);
+
+  // Show explanation if already answered
+  if (answered && q.explanation) {
+    const expTextEl = document.getElementById('explanation-text');
+    expTextEl.innerHTML = mathify(q.explanation);
+    renderKatex(expTextEl);
+    document.getElementById('explanation').classList.add('show');
+  }
+}
+
+// ── Select answer ──────────────────────────────────────────────────────
+function selectAnswer(letter) {
+  if (userAnswers[currentIdx]) return; // already answered
+  const q = questions[currentIdx];
+  const isCorrect = letter === q.answer;
+  userAnswers[currentIdx] = { selected: letter, correct: isCorrect };
+  updateAnsweredCount();
+  renderOptions(q, currentIdx);
+}
+
+// ── Show theory answer ─────────────────────────────────────────────────
+function showAnswer() {
+  theoryShown[currentIdx] = true;
+  updateAnsweredCount();
+  document.getElementById('theory-box').style.display = 'block';
+}
+
+// ── Timer ──────────────────────────────────────────────────────────────
+function startTimer() {
+  timerSeconds = 3600;
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    timerSeconds--;
+    if (timerSeconds <= 0) { clearInterval(timerInterval); endQuiz(); return; }
+    const h = String(Math.floor(timerSeconds / 3600)).padStart(2, '0');
+    const m = String(Math.floor((timerSeconds % 3600) / 60)).padStart(2, '0');
+    const s = String(timerSeconds % 60).padStart(2, '0');
+    document.getElementById('timer-display').textContent = `${h}:${m}:${s}`;
+  }, 1000);
+}
+function stopTimer() { clearInterval(timerInterval); }
+
+// ── Answered count ─────────────────────────────────────────────────────
+function updateAnsweredCount() {
+  const n = Object.keys(userAnswers).length + Object.keys(theoryShown).length;
+  document.getElementById('q-answered').textContent = n;
+  document.getElementById('q-total2').textContent   = questions.length;
+}
+
+// ── Navigation ─────────────────────────────────────────────────────────
+function prevQuestion() {
+  if (currentIdx > 0) { currentIdx--; renderQuestion(); }
+}
+
+function nextQuestion() {
+  if (currentIdx < questions.length - 1) { currentIdx++; renderQuestion(); }
+  else endQuiz();
+}
+
+// ── End quiz / results ─────────────────────────────────────────────────
+function endQuiz() {
+  hide('quiz-screen');
+  show('results-screen');
+
+  let correct = 0, wrong = 0, skipped = 0;
+  const isObj = quizType === 'obj';
+
+  if (isObj) {
+    questions.forEach((q, i) => {
+      const a = userAnswers[i];
+      if (!a) skipped++;
+      else if (a.correct) correct++;
+      else wrong++;
+    });
+  } else {
+    questions.forEach((q, i) => {
+      if (theoryShown[i]) correct++; else skipped++;
+    });
+  }
+
+  const total = questions.length;
+  const pct   = isObj ? Math.round(correct / total * 100) : Math.round(correct / total * 100);
+
+  document.getElementById('score-pct').textContent = pct + '%';
+  document.getElementById('stat-correct').textContent = correct;
+  document.getElementById('stat-wrong').textContent   = isObj ? wrong : '—';
+  document.getElementById('stat-skip').textContent    = skipped;
+
+  // Ring animation
+  const circumference = 364.4;
+  const offset = circumference - (pct / 100 * circumference);
+  const ringEl = document.getElementById('ring-fg');
+  const color  = pct >= 70 ? '#43e97b' : pct >= 50 ? '#6c63ff' : '#ff6584';
+  ringEl.style.stroke = color;
+  setTimeout(() => { ringEl.style.strokeDashoffset = offset; }, 100);
+
+  // Title
+  const titles = pct >= 80 ? ['Excellent! 🎉', 'You crushed it!'] :
+                 pct >= 60 ? ['Good Job! 👍', 'Keep pushing!'] :
+                 pct >= 40 ? ['Not Bad 📚', 'Room to improve.'] :
+                             ['Keep Studying 💪', 'Practice makes perfect.'];
+  document.getElementById('score-title').textContent = titles[0];
+  document.getElementById('score-sub').textContent   = isObj
+    ? `${correct} correct out of ${total} questions — ${titles[1]}`
+    : `${correct} answers revealed out of ${total} questions`;
+
+  // Review
+  if (isObj) buildReview();
+  else document.getElementById('review-list').innerHTML = '<p style="color:var(--muted);font-size:14px;">Review not available for theory mode.</p>';
+}
+
+function buildReview() {
+  const list = document.getElementById('review-list');
+  list.innerHTML = questions.map((q, i) => {
+    const a = userAnswers[i];
+    const status = !a ? 'skip' : a.correct ? 'correct' : 'wrong';
+    const statusLabel = status === 'correct' ? '✓ Correct' : status === 'wrong' ? '✗ Wrong' : '— Skipped';
+    const yourAns = a ? `Your answer: <span>${a.selected} — ${mathify(q.options[a.selected])}</span>` : '';
+    const correctAns = `Correct: <span>${q.answer} — ${mathify(q.options[q.answer])}</span>`;
+    const exp = q.explanation ? `<div class="review-exp">💡 ${mathify(q.explanation)}</div>` : '';
+    return `<div class="review-item r-${status}">
+      <div class="review-status">${statusLabel}</div>
+      <div class="review-q">${i+1}. ${mathify(q.question)}</div>
+      <div class="review-answers">${yourAns}${a && !a.correct ? ' &nbsp;·&nbsp; ' : ''}${(!a || !a.correct) ? correctAns : ''}</div>
+      ${exp}
+    </div>`;
+  }).join('');
+
+  // Render KaTeX in all review items
+  list.querySelectorAll('.review-q, .review-answers, .review-exp').forEach(renderKatex);
+}
+
+// ── Restart ────────────────────────────────────────────────────────────
+function restart() {
+  hide('results-screen');
+  show('setup-screen');
+  questions = []; userAnswers = {}; theoryShown = {};
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────
+function show(id) { document.getElementById(id).style.display = 'block'; }
+function hide(id) { document.getElementById(id).style.display = 'none'; }
+function showError(msg) {
+  const el = document.getElementById('error-box');
+  el.textContent = msg; el.style.display = 'block';
+}
+function hideError() { document.getElementById('error-box').style.display = 'none'; }
+</script>
+</body>
+</html>

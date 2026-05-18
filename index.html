@@ -649,16 +649,14 @@ function loadSubjects(type) {
   });
 }
 
-function loadSubjectData(type, subjectFile, callback) {
-  const base = type === 'obj' ? 'obj/' : 'theory/';
-  window.__QUIZ_SUBJECT__ = null;
-  injectScript(base + subjectFile, () => {
-    callback(window.__QUIZ_SUBJECT__);
+function loadYearData(type, yearFile, callback) {
+  window.__QUIZ_DATA__ = null;
+  injectScript((type === 'obj' ? 'obj/' : 'theory/') + yearFile, () => {
+    callback(window.__QUIZ_DATA__);
   });
 }
 
 function injectScript(src, callback) {
-  // Remove previous dynamic script if any
   const old = document.getElementById('__dyn_script__');
   if (old) old.remove();
   const s = document.createElement('script');
@@ -689,18 +687,14 @@ function populateSubjects() {
   const subjects = allData[quizType].__subjects__;
   const sel = document.getElementById('subject-select');
   sel.innerHTML = '<option value="">— Select Subject —</option>' +
-    subjects.map(s => `<option value="${s.file}">${s.name}</option>`).join('');
+    subjects.map((s, i) => `<option value="${i}">${s.name}</option>`).join('');
   sel.onchange = () => {
-    const file = sel.value;
+    const idx = sel.value;
     const yearSel = document.getElementById('year-select');
-    if (!file) { yearSel.innerHTML = '<option value="">All Years</option>'; return; }
-    yearSel.innerHTML = '<option value="">Loading years...</option>';
-    loadSubjectData(quizType, file, (pool) => {
-      if (!pool) { yearSel.innerHTML = '<option value="">All Years</option>'; return; }
-      const years = [...new Set(pool.map(q => q.year))].sort();
-      yearSel.innerHTML = '<option value="">All Years</option>' +
-        years.map(y => '<option value="' + y + '">' + y + '</option>').join('');
-    });
+    if (idx === '') { yearSel.innerHTML = '<option value="">All Years</option>'; return; }
+    const subject = subjects[parseInt(idx)];
+    yearSel.innerHTML = '<option value="">All Years</option>' +
+      subject.years.map(y => `<option value="${y.file}">${y.year} (${y.count} Qs)</option>`).join('');
   };
 }
 
@@ -709,34 +703,21 @@ function populateSubjects() {
 // ── Start quiz ─────────────────────────────────────────────────────────
 function startQuiz() {
   hideError();
-  const subjectFile = document.getElementById('subject-select').value;
-  if (!subjectFile) { showError('Please select a subject.'); return; }
+  const subjIdx = document.getElementById('subject-select').value;
+  if (subjIdx === '') { showError('Please select a subject.'); return; }
 
-  const year = document.getElementById('year-select').value;
+  const subjects = allData[quizType].__subjects__;
+  const subject = subjects[parseInt(subjIdx)];
+  const yearFile = document.getElementById('year-select').value;
+
   document.getElementById('start-btn').disabled = true;
   document.getElementById('start-btn').textContent = 'Loading…';
 
-  loadSubjectData(quizType, subjectFile, (pool) => {
+  function processPool(pool) {
     document.getElementById('start-btn').disabled = false;
     document.getElementById('start-btn').textContent = 'Start Quiz';
-
     if (!pool || pool.length === 0) { showError('No questions found.'); return; }
-
-    // Filter by year
-    let filtered = year ? pool.filter(q => q.year === year) : pool;
-
-    // Populate years dropdown after loading
-    const yearSel = document.getElementById('year-select');
-    const years = [...new Set(pool.map(q => q.year))].sort();
-    const currentYear = yearSel.value;
-    yearSel.innerHTML = '<option value="">All Years</option>' +
-      years.map(y => `<option value="${y}" ${y===currentYear?'selected':''}>${y}</option>`).join('');
-
-    if (filtered.length === 0) { showError('No questions for that year.'); return; }
-
-    // Shuffle
-    filtered = filtered.slice().sort(() => Math.random() - .5);
-
+    let filtered = pool.slice().sort(() => Math.random() - .5);
     if (quizType === 'obj') {
       filtered = filtered.filter(q => q.options && (q.options.A || q.options.B));
       const count = parseInt(document.getElementById('count-slider').value);
@@ -744,19 +725,34 @@ function startQuiz() {
     } else {
       questions = filtered;
     }
-
     if (questions.length === 0) { showError('No valid questions found.'); return; }
-
     currentIdx  = 0;
     userAnswers = {};
     theoryShown = {};
-
     hide('setup-screen');
     show('quiz-screen');
     startTimer();
     updateAnsweredCount();
     renderQuestion();
-  });
+  }
+
+  if (yearFile) {
+    // Load specific year file
+    loadYearData(quizType, yearFile, processPool);
+  } else {
+    // Load all years sequentially and merge
+    const allYears = subject.years;
+    let merged = [];
+    let loaded = 0;
+    if (allYears.length === 0) { showError('No data found.'); return; }
+    allYears.forEach(y => {
+      loadYearData(quizType, y.file, (pool) => {
+        if (pool) merged = merged.concat(pool);
+        loaded++;
+        if (loaded === allYears.length) processPool(merged);
+      });
+    });
+  }
 }
 
 // ── Render question ────────────────────────────────────────────────────
@@ -780,7 +776,9 @@ function renderQuestion() {
   const imgEl = document.getElementById('q-image');
   const imgPath = q.images && q.images.length > 0 ? q.images[0] : null;
   if (imgPath) {
-    imgEl.src = (quizType === 'obj' ? 'obj/' : 'theory/') + imgPath;
+    // Images are base64 data URIs or file paths
+    imgEl.src = imgPath.startsWith('data:') ? imgPath
+      : (quizType === 'obj' ? 'obj/' : 'theory/') + imgPath;
     imgEl.style.display = 'block';
     imgEl.onerror = () => { imgEl.style.display = 'none'; };
   } else {
